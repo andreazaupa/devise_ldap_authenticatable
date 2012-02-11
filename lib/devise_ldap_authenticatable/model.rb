@@ -16,6 +16,8 @@ module Devise
         attr_reader :current_password, :password
         attr_accessor :password_confirmation
       end
+      
+      
 
       def login_with
         @login_with ||= Devise.mappings[self.class.to_s.underscore.to_sym].to.authentication_keys.first
@@ -55,6 +57,44 @@ module Devise
         Devise::LdapAdapter.get_ldap_param(login_with,param)
       end
 
+
+      # Verifies whether an password (ie from sign in) is the user password.
+      def valid_password?(password)
+        valid_ldap_authentication?(password)
+      end
+
+      # Set password and password confirmation to nil
+      def clean_up_passwords
+        self.password = self.password_confirmation = nil
+      end
+
+      def update_with_password(params, *options)
+        current_password = params.delete(:current_password)
+
+        if params[:password].blank?
+          params.delete(:password)
+          params.delete(:password_confirmation) if params[:password_confirmation].blank?
+        end
+
+        result = if valid_password?(current_password)
+          if params[:password_confirmation] && params[:password] != params[:password_confirmation]
+            self.errors.add(:password, :invalid)
+            false
+          else
+            reset_password! params[:password],params[:password_confirmation] if params[:password].present?
+            update_attributes(params, *options)
+          end
+        else
+          self.attributes = params
+          self.valid?
+          self.errors.add(:current_password, current_password.blank? ? :blank : :invalid)
+          false
+        end
+
+        clean_up_passwords
+        result
+      end
+      
       #
       # callbacks
       #

@@ -4,6 +4,9 @@ module Devise
 
   module LdapAdapter
     
+    
+    
+    
     def self.valid_credentials?(login, password_plaintext)
       options = {:login => login, 
                  :password => password_plaintext, 
